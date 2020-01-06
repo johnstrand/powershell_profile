@@ -25,6 +25,9 @@ function Prompt {
     # Create some fancy unicode characters
     $seg = [char]0xE0B0;
     $branchSymbol = [char]0xe0a0;
+    $ahead = [char]0x21e1;
+    $behind = [char]0x21e3;
+
     # Set terminal title
     $host.ui.RawUI.WindowTitle = $loc[1];
     # Get current branch (if any, and redirect errors to $null)
@@ -35,7 +38,7 @@ function Prompt {
         # Get status for current branch
         $gitStatus = & git status -s --porcelain
         # Get number of commits behind and after remote
-        $gitAheadBehind = & git for-each-ref --format="%(push:track)" refs/heads/$gitBranch
+        $gitAheadBehind = ((& git for-each-ref --format="%(push:track)" refs/heads/$gitBranch) -replace "ahead ", $ahead) -replace "behind ", $behind
 
         # If we have a status
         if ($gitStatus) {
