@@ -58,7 +58,7 @@ function Prompt {
                 { $branchSymbol } 
                 { " " }
                 { $gitBranch } 
-                { " " }
+                { if ($gitAheadBehind) { " " } else { "" } }
                 { $gitAheadBehind } 
                 { " " }
                 { $gitStatus }
