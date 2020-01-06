@@ -1,14 +1,30 @@
-function Prompt {
+function ansi ([int] $code) {
     $c = [char]27;
-    $reset = "$c[0m";
+    "$c[$($code)m"
+}
+
+function Prompt {
+    $colors = @{
+        reset    = ansi(0)
+        bgblack  = ansi(40)
+        bgblue   = ansi(44)
+        bggreen  = ansi(42)
+        bgwhite  = ansi(47)
+        bgyellow = ansi(43)
+        fgblack  = ansi(30)
+        fgblue   = ansi(34)
+        fggreen  = ansi(32)
+        fgwhite  = ansi(37)
+        fgyellow = ansi(33)
+    }
     # Split current path to extract directory
-    $loc = (Get-Location).Path.Replace("\", "/").Split(":");
+    $loc = (Get-Location).Path.Replace("\", "/").Split(":")
+    if ((Get-Location).Path -eq $HOME) {
+        $loc[1] = "~"
+    }
     # Create some fancy unicode characters
-    $pipe = [char]0x2502;
-    $ang = [char]0x2514;
-    $arr = [char]0x2192;
-    $block_arr_left = [char]0x25C0;
-    $block_arr_right = [char]0x25B6;
+    $seg = [char]0xE0B0;
+    $branchSymbol = [char]0xe0a0;
     # Set terminal title
     $host.ui.RawUI.WindowTitle = $loc[1];
     # Get current branch (if any, and redirect errors to $null)
@@ -20,23 +36,57 @@ function Prompt {
         $gitStatus = & git status -s --porcelain
         # Get number of commits behind and after remote
         $gitAheadBehind = & git for-each-ref --format="%(push:track)" refs/heads/$gitBranch
+
         # If we have a status
         if ($gitStatus) {
             # Create string delimited by ,
-            $gitStatus = "$block_arr_left" + [String]::Join(", ", ($gitStatus | 
+            $gitStatus = [String]::Join(", ", ($gitStatus | 
                     ForEach-Object { 
                         $_.substring(0, 3).trim() # Grab the first 3 characters and remove any whitespace
                     } | 
                     Group-Object | # Group rows
                     ForEach-Object { 
                         "$($_.Count) $($_.Name)" # Transform strings
-                    })) + "$block_arr_right"
+                    }))
         }
 
         # Compile git prompt
-        $gitPrompt = "$pipe[Git][$c[42m$c[30m$($gitBranch)$($gitAheadBehind)$($gitStatus)$reset]`r`n"
+        $gitPrompt = -join (@(
+                { $colors.fgwhite }
+                { $colors.bgblue }
+                { " " }
+                { $branchSymbol } 
+                { " " }
+                { $gitBranch } 
+                { " " }
+                { $gitAheadBehind } 
+                { " " }
+                { $gitStatus }
+                { " " }
+                { $colors.fgblue }
+                { $colors.bgblack }
+                { $seg }
+            )).invoke()
     }
-    "$reset$pipe[$($loc[0])] $($loc[1])`r`n$gitPrompt$reset$ang$arr$reset"
+    $prompt = @(
+        { $colors.bgyellow }
+        { $colors.fgblack }
+        { " " }
+        { $loc[0] }
+        { " $([char]0x205D) " }
+        { $loc[1] }
+        { " " }
+        { $colors.fgyellow }
+        { if ($gitBranch) { $colors.bgblue } else { $colors.bgblack } }
+        { $seg }
+        { $colors.fgwhite }
+        { $gitPrompt }
+        { $colors.reset }
+        { [System.Environment]::NewLine }
+        { $colors.fgblue }
+        { " > " }
+    )
+    -join $prompt.invoke()
 }
 
 Set-Alias -Name nvim -Value C:\tools\neovim\Neovim\bin\nvim-qt.exe
